@@ -201,8 +201,8 @@ if isinstance(raw_preds, tuple):
 raw_preds = np.squeeze(raw_preds, axis=-1) 
 
 # 5) Map via thresholds
-thr_low  = 0.4
-thr_high = 1.6
+thr_low  = 0.45
+thr_high = 1.55
 def apply_thresholds(x):
     if x <= thr_low:
         return 0
