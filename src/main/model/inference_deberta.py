@@ -25,7 +25,7 @@ test_ds = test_ds.remove_columns(["sentence"])
 test_ds.set_format(type="torch", columns=["input_ids", "attention_mask"])
 
 # 4) Run inference
-pred_out   = trainer.predict(test_ds)
+pred_out = trainer.predict(test_ds)
 # 5) Unpack & squeeze safely
 raw_preds = pred_out.predictions
 if isinstance(raw_preds, tuple):
@@ -34,7 +34,7 @@ if isinstance(raw_preds, tuple):
 raw_preds = np.squeeze(raw_preds, axis=-1) 
 
 # 5) Map via thresholds
-thr_low  = 0.45
+thr_low = 0.45
 thr_high = 1.55
 def apply_thresholds(x):
     if x <= thr_low:
@@ -48,11 +48,11 @@ pred_ids = np.array([apply_thresholds(x) for x in raw_preds], dtype=int)
 
 # 6) Map back to labels
 ID2LABEL = {0: "negative", 1: "neutral", 2: "positive"}
-labels    = [ID2LABEL[i] for i in pred_ids]
+labels = [ID2LABEL[i] for i in pred_ids]
 
 # 7) Build & save submission
 submission_df = pd.DataFrame({
-    "id":    test_df["id"],
+    "id": test_df["id"],
     "label": labels
 })
 submission_df.to_csv("../resources/data/submission_deberta_ordinal_thr.csv", index=False)
