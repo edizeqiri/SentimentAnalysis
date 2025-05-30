@@ -2,13 +2,11 @@ import pandas as pd
 import numpy as np
 from transformers import AutoTokenizer, Trainer, AutoModelForSequenceClassification
 from datasets import Dataset
-import torch
-from pathlib import Path
 
 # 1) load your saved model + tokenizer
-model_path = "my_model_dir"   # <-- the folder you passed to save_model()
-tokenizer  = AutoTokenizer.from_pretrained(model_path, use_fast=True)
-model      = AutoModelForSequenceClassification.from_pretrained(model_path)
+model_path = "my_model_dir"
+tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=True)
+model = AutoModelForSequenceClassification.from_pretrained(model_path)
 
 # 2) rebuild a Trainer for easy batched pred
 trainer = Trainer(model=model, tokenizer=tokenizer)
@@ -58,4 +56,4 @@ submission_df = pd.DataFrame({
     "label": labels
 })
 submission_df.to_csv("../resources/data/submission_deberta_ordinal_thr.csv", index=False)
-print(f"✅ Wrote submission_deberta_ordinal_thr.csv ({len(submission_df)} rows)")
+print(f" Wrote submission_deberta_ordinal_thr.csv ({len(submission_df)} rows)")

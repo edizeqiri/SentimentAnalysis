@@ -4,7 +4,6 @@ import numpy as np
 from transformers import (
     AutoTokenizer,
     AutoModelForSequenceClassification,
-    AutoModel,
     TrainingArguments,
     Trainer,
     EvalPrediction,
@@ -12,14 +11,12 @@ from transformers import (
     EarlyStoppingCallback
 )
 from datasets import Dataset
-from sklearn.metrics import accuracy_score, classification_report, f1_score, mean_absolute_error
+from sklearn.metrics import accuracy_score, f1_score, mean_absolute_error
 from sklearn.model_selection import train_test_split
 import torch
 import random
 import os
-from pathlib import Path
 import warnings
-from torch import nn
 warnings.filterwarnings("ignore")
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -29,8 +26,8 @@ if torch.cuda.is_available(): torch.cuda.manual_seed_all(seed)
 print("device:", device)
 
 os.environ["PYTHONHASHSEED"] = str(seed)
-random.seed(seed);
-np.random.seed(seed);
+random.seed(seed)
+np.random.seed(seed)
 torch.manual_seed(seed)
 torch.cuda.manual_seed_all(seed)
 
@@ -39,25 +36,25 @@ train_df = pd.read_csv("../resources/data/training_eda_augmented.csv")
 
 train_df, val_df = train_test_split(
     train_df,
-    test_size=0.2,              # 20% for validation
-    stratify=train_df['label'],       # Preserve label distribution
-    random_state=seed             # Set seed for reproducibility
+    test_size=0.2,
+    stratify=train_df['label'],
+    random_state=seed
 )
 
 LABEL2ID = {"negative": 0, "neutral": 1, "positive": 2}
 ID2LABEL = {v: k for k, v in LABEL2ID.items()}
 
 train_df["label"] = train_df["label"].map(LABEL2ID).astype("float32")
-val_df["label"]   = val_df["label"].map(LABEL2ID).astype("float32")
+val_df["label"] = val_df["label"].map(LABEL2ID).astype("float32")
 
 assert train_df["label"].isna().sum() == 0
-assert val_df["label"].isna().sum()   == 0
+assert val_df["label"].isna().sum() == 0
 
 model_name = "microsoft/deberta-v3-base"
 
 tokenizer = AutoTokenizer.from_pretrained(model_name, add_prefix_space=False)
 train_ds = Dataset.from_pandas(train_df[["sentence", "label"]])
-val_ds   = Dataset.from_pandas(val_df[["sentence", "label"]])
+val_ds = Dataset.from_pandas(val_df[["sentence", "label"]])
 
 def tokenize(batch):
     return tokenizer(
@@ -80,19 +77,10 @@ model = AutoModelForSequenceClassification.from_pretrained(
     model_name,
     num_labels=1,
 )
-"""
-def compute_metrics(eval_pred):
-    logits, labels = eval_pred
-    preds = logits.argmax(-1)
-    return {
-        "accuracy": accuracy_score(labels, preds),
-        "f1":       f1_score(labels, preds, average="macro"),
-        "mae":      mean_absolute_error(labels, preds),
-    }
-"""
+
 def compute_metrics(eval_pred: EvalPrediction):
     preds, labels = eval_pred.predictions, eval_pred.label_ids
-    preds = np.squeeze(preds)       # removes all singleton dims
+    preds = np.squeeze(preds)
     mae = mean_absolute_error(labels, preds)
 
     ints = np.clip(np.round(preds), 0, 2).astype(int)
@@ -102,11 +90,11 @@ def compute_metrics(eval_pred: EvalPrediction):
     return {"eval_mae": mae, "accuracy": acc, "f1": f1}
 
 best_cfg = {
-    "learning_rate":               2.2637907442032564e-05,
-    "weight_decay":                0.03879999557731224,
+    "learning_rate": 2.2637907442032564e-05,
+    "weight_decay": 0.03879999557731224,
     "per_device_train_batch_size": 8,
-    "lr_scheduler_type":           "cosine",
-    "warmup_ratio":                0.16100916015424288,
+    "lr_scheduler_type": "cosine",
+    "warmup_ratio": 0.16100916015424288,
 }
 
 #hyper parameters:
@@ -115,8 +103,6 @@ batch_size = 8
 num_epochs = 4
 warmup_ratio = 0.2
 weight_decay = 0.04
-
-
 
 collator = DataCollatorWithPadding(tokenizer, pad_to_multiple_of=8)
 
@@ -188,7 +174,7 @@ test_ds = test_ds.remove_columns(["sentence"])
 test_ds.set_format(type="torch", columns=["input_ids", "attention_mask"])
 
 # 4) Run inference
-pred_out   = trainer.predict(test_ds)
+pred_out = trainer.predict(test_ds)
 # 5) Unpack & squeeze safely
 raw_preds = pred_out.predictions
 if isinstance(raw_preds, tuple):
@@ -197,7 +183,7 @@ if isinstance(raw_preds, tuple):
 raw_preds = np.squeeze(raw_preds, axis=-1) 
 
 # 5) Map via thresholds
-thr_low  = 0.45
+thr_low = 0.45
 thr_high = 1.55
 def apply_thresholds(x):
     if x <= thr_low:
@@ -211,11 +197,11 @@ pred_ids = np.array([apply_thresholds(x) for x in raw_preds], dtype=int)
 
 # 6) Map back to labels
 ID2LABEL = {0: "negative", 1: "neutral", 2: "positive"}
-labels    = [ID2LABEL[i] for i in pred_ids]
+labels = [ID2LABEL[i] for i in pred_ids]
 
 # 7) Build & save submission
 submission_df = pd.DataFrame({
-    "id":    test_df["id"],
+    "id": test_df["id"],
     "label": labels
 })
 submission_df.to_csv("../resources/data/submission_deberta_ordinal_thr.csv", index=False)

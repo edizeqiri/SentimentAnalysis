@@ -10,10 +10,6 @@ from transformers import (
     DataCollatorWithPadding, TrainingArguments, Trainer,
     EarlyStoppingCallback
 )
-
-# ------------------------------------------------------------------
-# 1.  Minimal, model-compatible text cleaning
-# ------------------------------------------------------------------
 import re
 
 
@@ -37,7 +33,7 @@ def train_roberta_sentiment(
         seed: int = 42
 ):
     """
-    Fine-tune twitter-roberta-base-sentiment-latest on a labelled DataFrame.
+    Fine-tune twitter-roberta-base-sentiment-latest on a labeled DataFrame.
     Returns (trainer, metrics_dict).
     """
     os.environ["PYTHONHASHSEED"] = str(seed)
@@ -76,21 +72,21 @@ def train_roberta_sentiment(
         id2label=id2label, label2id=label2id
     )
 
-    if os.name == "nt":  # only needed on Windows
+    if os.name == "nt":
         model.floating_point_ops = lambda *a, **k: 0
 
     def tokenize(batch):
         return tokenizer(
             batch["text"],
             truncation=True,
-            max_length=128,  # plenty for tweets
+            max_length=128,
         )
 
     train_ds = train_ds.map(
         tokenize,
         batched=True,
-        batch_size=1000,  # bigger batch → fewer Python calls
-        num_proc=8,  # avoid Windows/mp hang; raise on Linux if you like
+        batch_size=1000,
+        num_proc=8,
         remove_columns=["text"],
         desc="Tokenising train",
         load_from_cache_file=False,

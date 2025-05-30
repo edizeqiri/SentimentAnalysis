@@ -4,23 +4,19 @@ import numpy as np
 from transformers import (
     AutoTokenizer,
     AutoModelForSequenceClassification,
-    AutoModel,
     TrainingArguments,
     Trainer,
     EvalPrediction,
     DataCollatorWithPadding,
     EarlyStoppingCallback,
-    AutoConfig,
 )
 from datasets import Dataset
-from sklearn.metrics import accuracy_score, classification_report, f1_score, mean_absolute_error
-from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, f1_score, mean_absolute_error
 import torch
 import random
 import os
 from pathlib import Path
 import warnings
-from torch import nn
 warnings.filterwarnings("ignore")
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -30,16 +26,16 @@ if torch.cuda.is_available(): torch.cuda.manual_seed_all(seed)
 print("device:", device)
 
 os.environ["PYTHONHASHSEED"] = str(seed)
-random.seed(seed);
-np.random.seed(seed);
+random.seed(seed)
+np.random.seed(seed)
 torch.manual_seed(seed)
 torch.cuda.manual_seed_all(seed)
 
 train_path = Path("../resources/data/training_split.csv")
-val_path   = Path("../resources/data/validation_split.csv")
+val_path = Path("../resources/data/validation_split.csv")
 
 train_df = pd.read_csv(train_path)
-val_df   = pd.read_csv(val_path)
+val_df = pd.read_csv(val_path)
 
 
 LABEL2ID = {"negative": 0, "neutral": 1, "positive": 2}
@@ -55,7 +51,7 @@ model_name = "microsoft/deberta-v3-base"
 
 tokenizer = AutoTokenizer.from_pretrained(model_name, add_prefix_space=False)
 train_ds = Dataset.from_pandas(train_df[["sentence", "label"]])
-val_ds   = Dataset.from_pandas(val_df[["sentence", "label"]])
+val_ds = Dataset.from_pandas(val_df[["sentence", "label"]])
 
 def tokenize(batch):
     return tokenizer(
