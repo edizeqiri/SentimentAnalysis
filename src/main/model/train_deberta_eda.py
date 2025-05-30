@@ -91,16 +91,12 @@ def compute_metrics(eval_pred):
     }
 """
 def compute_metrics(eval_pred: EvalPrediction):
-    # unpack
     preds, labels = eval_pred.predictions, eval_pred.label_ids
-    # ensure a 1-D array of floats
     preds = np.squeeze(preds)       # removes all singleton dims
-    # compute MAE on the raw outputs
     mae = mean_absolute_error(labels, preds)
-    # round & clamp back to {0,1,2}
+
     ints = np.clip(np.round(preds), 0, 2).astype(int)
     labels_int = labels.astype(int)
-    # nominal metrics
     acc = accuracy_score(labels_int, ints)
     f1  = f1_score(labels_int, ints, average="macro")
     return {"eval_mae": mae, "accuracy": acc, "f1": f1}

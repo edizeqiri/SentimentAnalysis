@@ -26,10 +26,6 @@ def preprocess_tweet(text: str) -> str:
     text = re.sub(r'\s+', ' ', text).strip()
     return text
 
-
-# ------------------------------------------------------------------
-# 2.  Main training function
-# ------------------------------------------------------------------
 def train_roberta_sentiment(
         df: pd.DataFrame,
         text_col: str = "sentence",
@@ -44,28 +40,25 @@ def train_roberta_sentiment(
     Fine-tune twitter-roberta-base-sentiment-latest on a labelled DataFrame.
     Returns (trainer, metrics_dict).
     """
-    # ---------- 2.1  Reproducibility ----------
     os.environ["PYTHONHASHSEED"] = str(seed)
     random.seed(seed);
     np.random.seed(seed);
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
 
-    # ---------- 2.2  Prepare dataset ----------
     df = df[[text_col, label_col]].dropna()
     df[text_col] = df[text_col].map(preprocess_tweet)
 
-    # encode string labels → ids
+    # encode string labels
     label2id = {lbl: i for i, lbl in enumerate(sorted(df[label_col].unique()))}
     id2label = {i: lbl for lbl, i in label2id.items()}
     df["label_id"] = df[label_col].map(label2id)
 
-    # keep only the numeric label and the text, then rename ► unique column names
+    # keep only the numeric label and the text, then rename unique column names
     dataset_df = df[[text_col, "label_id"]].rename(
         columns={text_col: "text", "label_id": "label"}
     )
 
-    # Hugging Face Dataset
     hf_dataset = Dataset.from_pandas(dataset_df)
     hf_dataset = hf_dataset.class_encode_column("label")
 
@@ -75,7 +68,6 @@ def train_roberta_sentiment(
     )
     train_ds, val_ds = hf_dataset["train"], hf_dataset["test"]
 
-    # ---------- 2.3  Tokeniser & model ----------
     model_ckpt = "cardiffnlp/twitter-roberta-base-sentiment-latest"
     tokenizer = AutoTokenizer.from_pretrained(model_ckpt, use_fast=True)
     model = AutoModelForSequenceClassification.from_pretrained(
@@ -116,8 +108,6 @@ def train_roberta_sentiment(
 
     data_collator = DataCollatorWithPadding(tokenizer, pad_to_multiple_of=8)
 
-    # ---------- 2.4  Metrics ----------
-
     def compute_metrics(eval_pred):
         logits, labels = eval_pred
         preds = np.argmax(logits, axis=-1)
@@ -127,7 +117,7 @@ def train_roberta_sentiment(
             "f1": f1_score(labels, preds, average="macro"),
         }
 
-    # ---------- 2.5  TrainingArguments ----------
+    # training arguments
     args = TrainingArguments(
         eval_strategy="epoch",
         save_strategy="epoch",
@@ -152,7 +142,6 @@ def train_roberta_sentiment(
         seed=seed,
     )
 
-    # ---------- 2.6  Trainer ----------
     trainer = Trainer(
         model,
         args,
@@ -164,11 +153,8 @@ def train_roberta_sentiment(
         callbacks=[EarlyStoppingCallback(early_stopping_patience=2)],
     )
 
-    # ---------- 2.7  Train & evaluate ----------
     trainer.train()
     eval_results = trainer.evaluate()
-
-    # ---------- 2.8  Save ----------
     trainer.save_model(Path(output_dir) / "best")
 
     return trainer, eval_results
