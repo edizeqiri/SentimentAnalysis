@@ -11,3 +11,11 @@ jupyterlab
 polars
 transformers
 torch
+datasets
+sklearn.metrics
+random
+os
+pathlib
+warnings
+re
+multiprocessing
